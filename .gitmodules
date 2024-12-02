@@ -1,0 +1,3 @@
+[submodule "modules/ptf"]
+	path = modules/ptf
+	url = git@github.com:Akisamu/Picture-to-PDF.git
