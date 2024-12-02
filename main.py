@@ -1,6 +1,4 @@
-import eromanga
-import n_hentai
-
+from modules import eromanga, n_hentai
 
 '''
 param url: 'https://eromanga-show.com/viewer?articleId=n&page=n'
