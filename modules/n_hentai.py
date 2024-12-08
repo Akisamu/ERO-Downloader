@@ -4,7 +4,7 @@ import PIL
 from tqdm import tqdm
 
 
-def download(infos: list) -> None:
+def get_images(infos: list) -> None:
     """
     :param infos: dict 'name', 'final', 'formatt'
     :return:
@@ -29,6 +29,7 @@ def download(infos: list) -> None:
             with open(f'{i}.jpg', 'wb') as out_file:
                 out_file.write(r.content)
 
+        # --- 把输出改了，改成类变量？  ---
         try:
             os.system('ptf')
         except PIL.UnidentifiedImageError as ie:
