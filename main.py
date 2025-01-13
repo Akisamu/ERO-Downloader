@@ -4,7 +4,7 @@ from modules import eromanga, n_hentai
 param url: 'https://eromanga-show.com/viewer?articleId=n&page=n'
 '''
 urls = [
-    'https://eromanga-show.com/viewer?articleId=3136036&page=1'
+
 ]
 
 """
@@ -12,11 +12,11 @@ urls = [
         'name': '',
         'final': 1,
         'id': 1,
-        'format': 'jpg'
+        'format': 'webp'
     }
 """
 infos = [
-
+    
 ]
 
 
