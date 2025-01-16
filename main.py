@@ -19,7 +19,7 @@ urls = [
 infos = [
     {
         'name': '[あくた～ (木家マユ)] イクのガマンゲーム!風紀委員長悶絶クリ責め地獄 [英訳]',
-        'final': 10,
+        'final': 3,
         'id': 545332,
         'format': 'jpg'
     }
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     if is_empty(infos) is False:
         for info in infos:
             image = nhentai.get_images(info)
-            p1 = I2P(images=image, pdf_name=info['name'], quality=75)
+            p1 = I2P(images=image, pdf_name=info['name'])
             p1.convert_images_to_pdf()
 
 
