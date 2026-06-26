@@ -47,7 +47,8 @@ _EROMANGA_ICON_B64 = _icon_b64(_EROMANGA_ICON)
 
 def _make_card(record: dict, index: int) -> str:
     """Render one history record as an HTML card with embedded thumbnail + trash button."""
-    name = _html.escape(record['name'])
+    raw_name = record['name']
+    name = _html.escape(raw_name)
     ts = record['timestamp'][:16].replace('T', ' ')
     pages = f"{record['downloaded']}/{record['total']}"
     url = _html.escape(record['url'][:80])
@@ -65,6 +66,22 @@ def _make_card(record: dict, index: int) -> str:
             'font-size:0.85em;">No cover</div>'
         )
 
+    # Preview button if the PDF still exists on disk
+    pdf_path = os.path.join(I2P.output_dir, f'{raw_name}.pdf')
+    preview_btn = ""
+    if os.path.isfile(pdf_path):
+        encoded = urllib.parse.quote(pdf_path, safe='')
+        preview_btn = (
+            f'<a href="http://127.0.0.1:{_PREVIEW_PORT}/preview?path={encoded}" '
+            f'target="_blank" title="Preview PDF in browser" '
+            f'style="position:absolute;bottom:8px;right:64px;color:#888;font-size:14px;'
+            f'text-decoration:none;padding:2px 8px;border:1px solid #555;border-radius:4px;'
+            f'transition:all 0.15s;" '
+            f'onmouseover="this.style.color=\"#fff\";this.style.borderColor=\"#aaa\";" '
+            f'onmouseout="this.style.color=\"#888\";this.style.borderColor=\"#555\";">'
+            f'Preview</a>'
+        )
+
     return f"""
     <div style="display:flex;gap:16px;padding:12px;border:1px solid #444;
                 border-radius:8px;margin-bottom:8px;background:#2b2b2b;position:relative;">
@@ -75,6 +92,7 @@ def _make_card(record: dict, index: int) -> str:
             <p style="margin:2px 0;color:#888;font-size:0.85em;overflow:hidden;
                       text-overflow:ellipsis;white-space:nowrap;">🔗 {url}</p>
         </div>
+        {preview_btn}
         <span style="position:absolute;bottom:8px;right:8px;color:#666;font-size:14px;"
               title="Select #{{index}} in the delete dropdown below">#{index} 🗑</span>
     </div>"""
@@ -135,7 +153,7 @@ def _pipeline_hentai_comics(url: str, quality: int, max_dim: int, progress: gr.P
     progress(0.0, desc="Scraping metadata …")
     info = nhentai.scrape_info(url)
     if info is None:
-        yield "[X] Failed to scrape metadata.", None, None, ""
+        yield "[X] Failed to scrape metadata.", None, None, "", "", gr.Dropdown()
         return
 
     name = info['name']
@@ -144,15 +162,15 @@ def _pipeline_hentai_comics(url: str, quality: int, max_dim: int, progress: gr.P
         f"**{name}**\n\n"
         f"Pages: {total}  ·  ID: {info['id']}  ·  Format: {info['format']}\n"
         f"CDN: `{info['cdn_base']}`"
-    ), None, None, ""
+    ), None, None, "", "", gr.Dropdown()
 
     progress(0.15, desc=f"Downloading {total} pages …")
     images = nhentai.get_images(info)
     if not images:
-        yield "[X] No images downloaded.", None, None, ""
+        yield "[X] No images downloaded.", None, None, "", "", gr.Dropdown()
         return
 
-    yield f"[OK] Downloaded {len(images)}/{total} pages", None, None, ""
+    yield f"[OK] Downloaded {len(images)}/{total} pages", None, None, "", "", gr.Dropdown()
     progress(0.55, desc=f"Compressing {len(images)} images (JPEG q={quality}) …")
 
     thumb_path = save_thumbnail(images[0], I2P.output_dir, name)
@@ -179,7 +197,7 @@ def _pipeline_hentai_comics(url: str, quality: int, max_dim: int, progress: gr.P
         f"| Max dim | {max_dim}px |\n"
     )
 
-    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path)
+    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path), _load_history(), gr.Dropdown(choices=_get_delete_choices())
 
 
 def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progress = gr.Progress()):
@@ -188,7 +206,7 @@ def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progre
     progress(0.0, desc="Scraping metadata …")
     info = ero_scrape_info(url)
     if info is None:
-        yield "[X] Failed to scrape metadata.", None, None, ""
+        yield "[X] Failed to scrape metadata.", None, None, "", "", gr.Dropdown()
         return
 
     name = info['name']
@@ -196,15 +214,15 @@ def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progre
     yield (
         f"**{name}**\n\n"
         f"Pages: {total}  ·  Article ID: {info['article_id']}"
-    ), None, None, ""
+    ), None, None, "", "", gr.Dropdown()
 
     progress(0.15, desc=f"Downloading {total} pages …")
     images = ero_get_images(url)
     if not images:
-        yield "[X] No images downloaded.", None, None, ""
+        yield "[X] No images downloaded.", None, None, "", "", gr.Dropdown()
         return
 
-    yield f"[OK] Downloaded {len(images)}/{total} pages", None, None, ""
+    yield f"[OK] Downloaded {len(images)}/{total} pages", None, None, "", "", gr.Dropdown()
     progress(0.55, desc=f"Compressing {len(images)} images (JPEG q={quality}) …")
 
     thumb_path = save_thumbnail(images[0], I2P.output_dir, name)
@@ -231,14 +249,15 @@ def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progre
         f"| Max dim | {max_dim}px |\n"
     )
 
-    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path)
+    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path), _load_history(), gr.Dropdown(choices=_get_delete_choices())
 
 
 # ---------------------------------------------------------------------------
 #  UI layout
 # ---------------------------------------------------------------------------
 
-def _build_download_tab(placeholder: str, info: str, pipeline_fn):
+def _build_download_tab(placeholder: str, info: str, pipeline_fn,
+                        history_html: gr.HTML, del_dropdown: gr.Dropdown):
     """Build the shared layout for a download tab."""
     url_input = gr.Textbox(
         label="URL",
@@ -273,7 +292,8 @@ def _build_download_tab(placeholder: str, info: str, pipeline_fn):
     run_btn.click(
         fn=pipeline_fn,
         inputs=[url_input, quality_slider, max_dim_dropdown],
-        outputs=[status_text, pdf_output, cover_image, preview_link],
+        outputs=[status_text, pdf_output, cover_image, preview_link,
+                 history_html, del_dropdown],
     )
 
 
@@ -282,20 +302,7 @@ def build_ui():
         gr.Markdown("# 📚 Hentai Downloader")
         gr.Markdown("Paste a comic URL, click download, get a PDF.")
 
-        with gr.Tab("hentai-comics"):
-            _build_download_tab(
-                placeholder="https://nhentai.com/en/comic/…",
-                info="Browse comics at https://nhentai.com/hentai-comics",
-                pipeline_fn=_pipeline_hentai_comics,
-            )
-
-        with gr.Tab("eromanga"):
-            _build_download_tab(
-                placeholder="https://eromanga-show.com/articles/…",
-                info="Browse comics at https://eromanga-show.com",
-                pipeline_fn=_pipeline_eromanga,
-            )
-
+        # History tab components (shared across download tabs for live sync)
         with gr.Tab("History"):
             history_html = gr.HTML(_load_history())
             with gr.Row():
@@ -316,6 +323,24 @@ def build_ui():
             history_btn.click(
                 fn=lambda: (_load_history(), gr.Dropdown(choices=_get_delete_choices(), value=None)),
                 outputs=[history_html, del_dropdown],
+            )
+
+        with gr.Tab("hentai-comics"):
+            _build_download_tab(
+                placeholder="https://nhentai.com/en/comic/…",
+                info="Browse comics at https://nhentai.com/hentai-comics",
+                pipeline_fn=_pipeline_hentai_comics,
+                history_html=history_html,
+                del_dropdown=del_dropdown,
+            )
+
+        with gr.Tab("eromanga"):
+            _build_download_tab(
+                placeholder="https://eromanga-show.com/articles/…",
+                info="Browse comics at https://eromanga-show.com",
+                pipeline_fn=_pipeline_eromanga,
+                history_html=history_html,
+                del_dropdown=del_dropdown,
             )
 
         gr.Markdown("---\n*Terminal version: `python main.py`*")
