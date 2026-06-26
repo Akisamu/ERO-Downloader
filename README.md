@@ -60,7 +60,7 @@ infos = [{'name': '...', 'final': ..., 'id': ..., 'format': '...'}]
 
 ```
 outputs/
-  .history/
+  history/
     info              ← download log (JSON Lines)
     thumbnails/       ← cover thumbnails
   *.pdf               ← generated PDFs
