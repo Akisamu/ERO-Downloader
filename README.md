@@ -33,6 +33,10 @@ Three tabs:
 | eromanga | Paste an eromanga-show.com article URL — same pipeline |
 | History | Download log with thumbnail previews, inline PDF viewer, per-record delete |
 
+![Download tab](intro_images/intro_download.png)
+
+![History tab](intro_images/intro_history.png)
+
 Adjustable JPEG quality (30–95) and max resolution (720p / 1080p / 1600p / original).
 
 ### Terminal mode
