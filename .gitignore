@@ -3,6 +3,7 @@
 *.webp
 *.jpg
 *.png
+!intro_images/*.png
 
 # Download history
 outputs/history/
