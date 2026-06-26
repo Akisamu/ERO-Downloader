@@ -336,8 +336,14 @@ def _start_preview_server(port: int = _PREVIEW_PORT):
             if os.path.isfile(file_path) and file_path.lower().endswith('.pdf'):
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/pdf')
-                self.send_header('Content-Disposition',
-                                 f'inline; filename={os.path.basename(file_path)}')
+                # RFC 5987: encode non-ASCII filename for Content-Disposition
+                fname = os.path.basename(file_path)
+                try:
+                    fname.encode('latin-1')
+                except UnicodeEncodeError:
+                    from urllib.parse import quote
+                    fname = f"UTF-8''{quote(fname)}"
+                self.send_header('Content-Disposition', f'inline; filename={fname}')
                 self.send_header('Content-Length', str(os.path.getsize(file_path)))
                 self.end_headers()
                 with open(file_path, 'rb') as f:
