@@ -10,6 +10,7 @@ import gradio as gr
 from modules import nhentai
 from modules.eromanga import get_images as ero_get_images, scrape_info as ero_scrape_info
 from modules.Utils import (
+    _sanitize_filename,
     delete_history_record,
     get_history,
     get_file_size_mb,
@@ -67,7 +68,8 @@ def _make_card(record: dict, index: int) -> str:
         )
 
     # Preview button if the PDF still exists on disk
-    pdf_path = os.path.join(I2P.output_dir, f'{raw_name}.pdf')
+    safe_name = _sanitize_filename(raw_name)
+    pdf_path = os.path.join(I2P.output_dir, f'{safe_name}.pdf')
     preview_btn = ""
     if os.path.isfile(pdf_path):
         encoded = urllib.parse.quote(pdf_path, safe='')

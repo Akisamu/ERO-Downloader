@@ -228,10 +228,15 @@ def get_history(output_dir: str) -> list[dict]:
 # ======================================================================
 
 def _sanitize_filename(name: str) -> str:
-    """Replace characters that are unsafe in filenames."""
-    unsafe = '<>:"/\\|?*'
+    """Replace characters that are unsafe in filenames (including non-printable ones)."""
+    unsafe = '<>:"/\\|?*\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f'
+    unsafe += '\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f'
+    unsafe += '\xa0'  # non-breaking space
     for ch in unsafe:
-        name = name.replace(ch, '_')
+        name = name.replace(ch, ' ')
+    # Collapse multiple spaces
+    import re
+    name = re.sub(r'\s+', ' ', name).strip()
     return name[:120]
 
 
