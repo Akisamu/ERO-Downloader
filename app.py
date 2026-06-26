@@ -153,7 +153,7 @@ def _pipeline_hentai_comics(url: str, quality: int, max_dim: int, progress: gr.P
     progress(0.0, desc="Scraping metadata …")
     info = nhentai.scrape_info(url)
     if info is None:
-        yield "[X] Failed to scrape metadata.", None, None, "", "", gr.Dropdown()
+        yield "[X] Failed to scrape metadata.", None, None, ""
         return
 
     name = info['name']
@@ -162,12 +162,12 @@ def _pipeline_hentai_comics(url: str, quality: int, max_dim: int, progress: gr.P
         f"**{name}**\n\n"
         f"Pages: {total}  ·  ID: {info['id']}  ·  Format: {info['format']}\n"
         f"CDN: `{info['cdn_base']}`"
-    ), None, None, "", "", gr.Dropdown()
+    ), None, None, ""
 
     progress(0.15, desc=f"Downloading {total} pages …")
     images = nhentai.get_images(info)
     if not images:
-        yield "[X] No images downloaded.", None, None, "", "", gr.Dropdown()
+        yield "[X] No images downloaded.", None, None, ""
         return
 
     yield f"[OK] Downloaded {len(images)}/{total} pages", None, None, "", "", gr.Dropdown()
@@ -197,8 +197,7 @@ def _pipeline_hentai_comics(url: str, quality: int, max_dim: int, progress: gr.P
         f"| Max dim | {max_dim}px |\n"
     )
 
-    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path), _load_history(), gr.Dropdown(choices=_get_delete_choices())
-
+    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path)
 
 def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progress = gr.Progress()):
     """Download + convert an eromanga-show.com comic."""
@@ -206,7 +205,7 @@ def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progre
     progress(0.0, desc="Scraping metadata …")
     info = ero_scrape_info(url)
     if info is None:
-        yield "[X] Failed to scrape metadata.", None, None, "", "", gr.Dropdown()
+        yield "[X] Failed to scrape metadata.", None, None, ""
         return
 
     name = info['name']
@@ -214,12 +213,12 @@ def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progre
     yield (
         f"**{name}**\n\n"
         f"Pages: {total}  ·  Article ID: {info['article_id']}"
-    ), None, None, "", "", gr.Dropdown()
+    ), None, None, ""
 
     progress(0.15, desc=f"Downloading {total} pages …")
     images = ero_get_images(url)
     if not images:
-        yield "[X] No images downloaded.", None, None, "", "", gr.Dropdown()
+        yield "[X] No images downloaded.", None, None, ""
         return
 
     yield f"[OK] Downloaded {len(images)}/{total} pages", None, None, "", "", gr.Dropdown()
@@ -249,8 +248,7 @@ def _pipeline_eromanga(url: str, quality: int, max_dim: int, progress: gr.Progre
         f"| Max dim | {max_dim}px |\n"
     )
 
-    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path), _load_history(), gr.Dropdown(choices=_get_delete_choices())
-
+    yield summary, pdf_path, thumb_path, _pdf_link(pdf_path)
 
 # ---------------------------------------------------------------------------
 #  UI layout
@@ -292,8 +290,12 @@ def _build_download_tab(placeholder: str, info: str, pipeline_fn,
     run_btn.click(
         fn=pipeline_fn,
         inputs=[url_input, quality_slider, max_dim_dropdown],
-        outputs=[status_text, pdf_output, cover_image, preview_link,
-                 history_html, del_dropdown],
+        outputs=[status_text, pdf_output, cover_image, preview_link],
+    )
+    # After download completes, refresh history
+    run_btn.click(
+        fn=lambda: (_load_history(), gr.Dropdown(choices=_get_delete_choices(), value=None)),
+        outputs=[history_html, del_dropdown],
     )
 
 
@@ -302,7 +304,8 @@ def build_ui():
         gr.Markdown("# 📚 Hentai Downloader")
         gr.Markdown("Paste a comic URL, click download, get a PDF.")
 
-        # History tab components (shared across download tabs for live sync)
+        # History tab first (for component creation / cross-tab sync),
+        # CSS in _HEAD moves it visually to the end
         with gr.Tab("History"):
             history_html = gr.HTML(_load_history())
             with gr.Row():
@@ -393,8 +396,13 @@ if __name__ == '__main__':
     <style>
         /* night color scheme */
         html {{ color-scheme: dark; }}
-        /* tab icons */
-        button[role="tab"]:nth-of-type(1)::before {{
+        /* visually reorder tabs: History → last */
+        .tab-nav {{ display: flex; }}
+        .tab-nav button[role="tab"]:nth-of-type(1) {{ order: 3; }}
+        .tab-nav button[role="tab"]:nth-of-type(2) {{ order: 1; }}
+        .tab-nav button[role="tab"]:nth-of-type(3) {{ order: 2; }}
+        /* tab icons (DOM order: History, hentai-comics, eromanga) */
+        button[role="tab"]:nth-of-type(2)::before {{
             content: "";
             display: inline-block;
             width: 22px; height: 22px;
@@ -404,7 +412,7 @@ if __name__ == '__main__':
             flex-shrink: 0;
             border-radius: 3px;
         }}
-        button[role="tab"]:nth-of-type(2)::before {{
+        button[role="tab"]:nth-of-type(3)::before {{
             content: "";
             display: inline-block;
             width: 22px; height: 22px;
